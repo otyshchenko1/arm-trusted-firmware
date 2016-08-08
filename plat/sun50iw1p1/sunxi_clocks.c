@@ -105,3 +105,81 @@ int sunxi_setup_clocks(uint16_t socid)
 
 	return 0;
 }
+
+struct scpi_clock {
+	uint32_t min_freq;
+	uint32_t max_freq;
+	uint32_t (*getter)(uint32_t);
+	uint32_t (*setter)(uint32_t, uint32_t);
+	uint32_t reg_addr;
+	const char *name;
+	uint16_t clockid;
+};
+
+struct scpi_clock sunxi_clocks[] = {
+};
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+static struct scpi_clock *get_sunxi_clock(int clocknr)
+{
+	if (clocknr < 0 || clocknr >= ARRAY_SIZE(sunxi_clocks))
+		return NULL;
+
+	return &sunxi_clocks[clocknr];
+}
+
+uint32_t sunxi_clock_get_min_rate(int clocknr)
+{
+	struct scpi_clock *clk = get_sunxi_clock(clocknr);
+
+	if (!clk)
+		return ~0;
+
+	return clk->min_freq;
+}
+
+uint32_t sunxi_clock_get_max_rate(int clocknr)
+{
+	struct scpi_clock *clk = get_sunxi_clock(clocknr);
+
+	if (!clk)
+		return ~0;
+
+	return clk->max_freq;
+}
+
+const char* sunxi_clock_get_name(int clocknr)
+{
+	struct scpi_clock *clk = get_sunxi_clock(clocknr);
+
+	if (!clk)
+		return NULL;
+
+	return clk->name;
+}
+
+uint32_t sunxi_clock_get_rate(int clocknr)
+{
+	struct scpi_clock *clk = get_sunxi_clock(clocknr);
+
+	if (!clk)
+		return ~0;
+
+	return clk->getter(clk->reg_addr);
+}
+
+int sunxi_clock_set_rate(int clocknr, uint32_t freq)
+{
+	struct scpi_clock *clk = get_sunxi_clock(clocknr);
+
+	if (!clk)
+		return ~0;
+
+	return clk->setter(clk->reg_addr, freq);
+}
+
+int sunxi_clock_nr_clocks(void)
+{
+	return ARRAY_SIZE(sunxi_clocks);
+}
