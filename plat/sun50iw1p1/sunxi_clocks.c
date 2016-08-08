@@ -28,9 +28,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
 #include <debug.h>
 #include <mmio.h>
 #include <ccmu.h>
+#include <plat_config.h>
+#include <mmio.h>
+#include <sys/errno.h>
+#include "sunxi_def.h"
 #include "sunxi_private.h"
 
 #define INITIAL_CPU_FREQ	816
@@ -128,6 +133,11 @@ int sunxi_setup_clocks(uint16_t socid)
 	return 0;
 }
 
+#define BIT(n) (1U << (n))
+
+#define RATE_OSC24M	(24 * 1000 * 1000)
+#define RATE_PERIPH0X2	(1200 * 1000 * 1000)
+
 struct scpi_clock {
 	uint32_t min_freq;
 	uint32_t max_freq;
@@ -159,6 +169,120 @@ static uint32_t get_cpu_clk_rate(uint32_t reg_addr)
 	return MHz(24) * n * k / (m * p);
 }
 
+static uint32_t get_div_clk_rate(uint32_t reg_addr)
+{
+	uint32_t clkreg = mmio_read_32(reg_addr);
+	uint32_t freq;
+
+	if (!(clkreg & PLL_ENABLE_BIT))
+		return 0;
+
+	switch ((clkreg >> 24) & 0x3) {
+	case 0: freq = RATE_OSC24M; break;
+	case 1: freq = RATE_PERIPH0X2; break;
+	case 2: freq = RATE_PERIPH0X2; break;
+	case 3: return 0;
+	}
+
+	freq >>= (clkreg >> 16) & 0x3;
+	freq /= (clkreg & 0xf) + 1;
+
+	return freq;
+}
+
+static uint32_t set_div_clk(uint32_t base_rate, int div)
+{
+	uint32_t reg = PLL_ENABLE_BIT;
+	int p, m;
+
+	switch (base_rate) {
+	case RATE_OSC24M: reg |= 0 << 24; break;
+	case RATE_PERIPH0X2: reg |= 1 << 24; break;
+	default: return 0;
+	}
+
+	m = div;
+	for (p = 0; p < 4; p++) {
+		if (m <= 16)
+			break;
+		m >>= 1;
+	}
+
+	reg |= (p & 0x03) << 16;
+	reg |= (m - 1) & 0x0f;
+
+	return reg;
+}
+
+static uint32_t find_matching_freq(uint32_t freq, uint32_t base_freq)
+{
+	int div, p;
+
+	if (freq == 0)
+		return 0;
+
+	if (freq >= base_freq)
+		return base_freq;
+
+	div = (base_freq + freq - 1) / freq;
+	for (p = 0; p < 4; p++) {
+		if (div <= 16)
+			break;
+		div >>= 1;
+	}
+	if (div > 16)
+		div = 16;
+
+	return (base_freq >> p) / div;
+}
+
+static uint32_t set_best_divider(uintptr_t reg_addr,
+				 uint32_t freq, uint32_t base_freq)
+{
+	uint32_t new_freq = find_matching_freq(freq, base_freq);
+	uint32_t div = base_freq / new_freq;
+
+	mmio_write_32(reg_addr, set_div_clk(base_freq, div));
+	return new_freq;
+}
+
+static uint32_t set_div_clk_rate(uint32_t reg_addr, uint32_t freq)
+{
+	uint32_t new_freq;
+
+	if (freq == 0) {
+		uint32_t reg = mmio_read_32(reg_addr);
+
+		mmio_write_32(reg_addr, reg & ~PLL_ENABLE_BIT);
+		return 0;
+	}
+
+	if (freq >= RATE_PERIPH0X2) {
+		mmio_write_32(reg_addr, set_div_clk(RATE_PERIPH0X2, 1));
+		return RATE_PERIPH0X2;
+	}
+
+	if (freq > RATE_OSC24M)
+		return set_best_divider(reg_addr, freq, RATE_PERIPH0X2);
+
+	if (freq < RATE_PERIPH0X2 / 8 / 16)
+		return set_best_divider(reg_addr, freq, RATE_OSC24M);
+
+	new_freq = find_matching_freq(freq, RATE_OSC24M);
+
+	if (new_freq < find_matching_freq(freq, RATE_PERIPH0X2))
+		return set_best_divider(reg_addr, freq, RATE_PERIPH0X2);
+	else
+		return set_best_divider(reg_addr, freq, RATE_OSC24M);
+}
+
+#define MMC_CLK_DESC(nr)						\
+	{.min_freq = RATE_OSC24M / 8 / 16, .max_freq= RATE_PERIPH0X2,	\
+	 .getter = get_div_clk_rate, .setter = set_div_clk_rate,	\
+	 .reg_addr = CCMU_SDMMC0_CLK_REG + (nr * 4),			\
+	 .name = "mmc" __STRING(nr) "_clk",				\
+	 .clockid = 75 + (nr) }
+
 #define CPU_CLK_DESC							\
 	{.min_freq = MHz(240), .max_freq= MHz(1536),			\
 	 .getter = get_cpu_clk_rate, .setter = set_cpu_clk_rate,	\
@@ -168,6 +292,9 @@ static uint32_t get_cpu_clk_rate(uint32_t reg_addr)
 
 struct scpi_clock sunxi_clocks[] = {
 	CPU_CLK_DESC,
+	MMC_CLK_DESC(0),
+	MMC_CLK_DESC(1),
+	MMC_CLK_DESC(2),
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
