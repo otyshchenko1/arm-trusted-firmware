@@ -104,6 +104,16 @@ int sunxi_dvfs_set_index(int index);
 int sunxi_dvfs_get_index(void);
 int sunxi_dvfs_get_nr_opp(void);
 
+/* Declarations for sunxi_sensors.c */
+int sunxi_setup_sensors(void);
+const char* sunxi_sensor_get_name(int sensornr);
+uint32_t sunxi_sensor_get_value(int sensornr);
+int sunxi_sensors_nr_sensors(void);
+
+/* Declarations for sunxi_temp.c */
+int sunxi_ths_setup(void);
+int sunxi_ths_read_temp(int sensornr);
+
 /* Gets the SPSR for BL33 entry */
 uint32_t sunxi_get_spsr_for_bl33_entry(int aarch);
 

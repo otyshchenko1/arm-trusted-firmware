@@ -248,9 +248,11 @@ void bl31_platform_setup(void)
 
 	sunxi_power_setup(socid);
 
+	sunxi_ths_setup();
+
 	sunxi_setup_clocks(socid);
 
-	NOTICE("SCPI: installed handler, implementation level: 111000\n");
+	NOTICE("SCPI: installed handler, implementation level: 111010\n");
 }
 
 /*******************************************************************************

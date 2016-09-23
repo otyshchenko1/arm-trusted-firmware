@@ -62,10 +62,14 @@
 #define SCP_CMD_CLOCK_GET_INFO	0x0e
 #define SCP_CMD_CLOCK_SET_RATE	0x0f
 #define SCP_CMD_CLOCK_GET_RATE	0x10
+#define SCP_CMD_SENSORS_CAPS	0x15
+#define SCP_CMD_SENSORS_INFO	0x16
+#define SCP_CMD_SENSORS_VALUE	0x17
 
 #define SCP_CMDS_IMPLEMENTED						  \
 	GENMASK(SCP_CMD_DVFS_GET_INDEX, SCP_CMD_DVFS_CAPABILITY)	| \
-	GENMASK(SCP_CMD_CLOCK_GET_RATE, SCP_CMD_CLOCKS_CAPS)
+	GENMASK(SCP_CMD_CLOCK_GET_RATE, SCP_CMD_CLOCKS_CAPS)		| \
+	GENMASK(SCP_CMD_SENSORS_VALUE, SCP_CMD_SENSORS_CAPS)
 
 /* end of SRAM A1 */
 #define SUNXI_SCPI_SHMEM_BASE   0x17e00
@@ -87,6 +91,25 @@ static int write_clock_info(uintptr_t payload, int clocknr)
 	mmio_write_8(payload + 12 + i, 0);
 
 	return 12 + i;
+}
+
+static int write_sensor_info(uintptr_t payload, int sensornr)
+{
+	const char *name, *s;
+	int i;
+
+	name = sunxi_sensor_get_name(sensornr);
+	if (!name)
+		return -SCPI_E_PARAM;
+
+	/* no triggers, always temperature sensor (for now) */
+	mmio_write_32(payload + 0x0, (sensornr & 0xffff));
+
+	for (i = 0, s = name; s[i] != 0; i++)
+		mmio_write_8(payload + 4 + i, s[i]);
+	mmio_write_8(payload + 4 + i, 0);
+
+	return 4 + i;
 }
 
 static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
@@ -176,6 +199,27 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 		mmio_write_32(payload_out, sunxi_dvfs_get_index());
 		*payload_size = 0x1;
 		return SCPI_OK;
+	case SCP_CMD_SENSORS_CAPS:
+		/* number of implemented sensors */
+		mmio_write_32(payload_out, sunxi_sensors_nr_sensors());
+		*payload_size = 0x2;
+		return SCPI_OK;
+	case SCP_CMD_SENSORS_INFO:
+		ret = write_sensor_info(payload_out, par1 & 0xffff);
+		if (ret < 0) {
+			*payload_size = 0;
+			return SCPI_E_PARAM;
+		}
+		*payload_size = ret;
+		return SCPI_OK;
+	case SCP_CMD_SENSORS_VALUE:
+		ret = sunxi_sensor_get_value(par1 & 0xffff);
+		if (ret == ~0)
+			return SCPI_E_RANGE;
+		mmio_write_32(payload_out, ret);
+		mmio_write_32(payload_out + 4, 0);
+		*payload_size = 8;
+		return 0;
 	}
 
 	return SCPI_E_SUPPORT;
