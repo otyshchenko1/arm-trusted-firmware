@@ -97,6 +97,13 @@ int sunxi_rsb_write(uint8_t address, uint8_t value);
 void sunxi_rsb_wait(const char *desc);
 int sunxi_rsb_configure(uint16_t hw_addr, uint8_t rt_addr);
 
+/* Declarations for sunxi_dvfs.c */
+uint32_t sunxi_dvfs_get_get_opp_voltage(int oppnr);
+uint32_t sunxi_dvfs_get_get_opp_frequency(int oppnr);
+int sunxi_dvfs_set_index(int index);
+int sunxi_dvfs_get_index(void);
+int sunxi_dvfs_get_nr_opp(void);
+
 /* Gets the SPSR for BL33 entry */
 uint32_t sunxi_get_spsr_for_bl33_entry(int aarch);
 

@@ -53,5 +53,6 @@ BL31_SOURCES		+=	drivers/arm/gic/arm_gic.c		\
 				plat/sun50iw1p1/sunxi_sip_svc.c		\
 				plat/sun50iw1p1/sunxi_scpi.c		\
 				plat/sun50iw1p1/sunxi_rsb.c		\
+				plat/sun50iw1p1/sunxi_dvfs.c		\
 				plat/sun50iw1p1/aarch64/sunxi_common.c
 
