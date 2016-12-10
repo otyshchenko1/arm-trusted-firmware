@@ -176,6 +176,31 @@ static void rsb_wait(const char *desc)
 	ERROR("%s: 0x%x\n", desc, reg);
 }
 
+static int axp803_set_cpu_voltage(int millivolt)
+{
+	uint8_t reg;
+
+	if (millivolt <= 0) {			/* power off system */
+		sunxi_pmic_write(0x32, sunxi_pmic_read(0x32) | 0x80);
+		return 0;			/* hopefully not ... */
+	}
+
+	if (millivolt < 800 || millivolt > 1300)
+		return -1;
+
+	if (millivolt > 1200)
+		reg = (millivolt - 1200) / 20 + 70;
+	else
+		reg = (millivolt - 500) / 10 + 0;
+
+	sunxi_pmic_write(0x21, reg);	/* DCDC2 */
+
+	while (!(sunxi_pmic_read(0x21) & 0x80))
+		;
+
+	return 0;
+}
+
 /* Initialize the RSB PMIC connection. */
 static int pmic_init(uint16_t hw_addr, uint8_t rt_addr)
 {
@@ -265,6 +290,11 @@ static int pmic_setup(void)
 	}
  
 	sunxi_pmic_write(0x15, 0x1a);	/* DLDO1 = VCC3V3_HDMI voltage = 3.3V */
+
+	ret = sunxi_rsb_read(0x14);
+	sunxi_rsb_write(0x14, ret | 0x40);	/* DCDC2/3 dual phase */
+
+	axp803_set_cpu_voltage(1100);
 
 	return 0;
 }
