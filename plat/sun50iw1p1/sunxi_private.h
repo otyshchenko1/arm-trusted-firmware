@@ -73,6 +73,8 @@ int sunxi_pmic_read(uint8_t address);
 int sunxi_pmic_write(uint8_t address, uint8_t value);
 int sunxi_power_setup(uint16_t socid);
 int sunxi_power_set_cpu_voltage(int millivolt);
+unsigned int sunxi_pstate_get(uint16_t device);
+int sunxi_pstate_set(uint16_t device, uint8_t state);
 
 void udelay(unsigned int delay);
 int sunxi_setup_clocks(uint16_t socid);

@@ -177,6 +177,148 @@ enum pmic_type {
 	PMIC_AXP803,
 } pmic_type;
 
+int sunxi_power_set_cpu_voltage(int millivolt)
+{
+	switch (pmic_type) {
+	case PMIC_AXP803:
+		return axp803_set_cpu_voltage(millivolt);
+	}
+
+	return -ENODEV;
+}
+
+/*
+ * device mapping: blocks of 8 (or 16?)
+ * block  0: DCDCn
+ * block  1: special (DC1SW, ...)
+ * block  2: ALDO
+ * block  3: DLDO
+ * block  4: ELDO
+ * block  5: FLDO
+ * block  6: GPIO
+ *
+ * state: == 0: power off
+ *        != 0: power on
+ */
+
+static uint32_t axp803_map_devices(uint16_t devid)
+{
+	unsigned int reg, bit;
+
+	switch (devid) {
+	case  0:		/* DCDC */
+	case  1:
+	case  2:
+	case  3:
+	case  4:
+	case  5:
+		reg = 0x10;
+		bit = devid;
+		break;
+	case  8:		/* DC1SW */
+		reg = 0x12;
+		bit = 7;
+		break;
+	case 16:		/* ALDO */
+	case 17:
+	case 18:
+		reg = 0x13;
+		bit = (devid & 7) + 5;
+		break;
+	case 24:		/* DLDO */
+	case 25:
+	case 26:
+	case 27:
+		reg = 0x12;
+		bit = (devid & 7) + 3;
+		break;
+	case 32:		/* ELDO */
+	case 33:
+	case 34:
+		reg = 0x13;
+		bit = (devid & 7) + 0;
+		break;
+	case 40:		/* FLDO */
+	case 41:
+		reg = 0x13;
+		bit = (devid & 7) + 2;
+		break;
+	case 48:		/* GPIO0LDO */
+	case 49:		/* GPIO1LDO */
+		/* TODO: implement */
+	default:
+		return -1;
+	}
+
+	return (bit & 0xff) | (reg << 8);
+}
+
+static unsigned int axp803_pstate_get(uint16_t device)
+{
+	uint32_t regmap = axp803_map_devices(device);
+	uint8_t reg;
+	int bit, val;
+
+	if (regmap == -1)
+		return -1;
+
+	reg = (regmap >> 8) & 0xff;
+	bit = regmap & 0xff;
+
+	val = sunxi_rsb_read(reg);
+	if (val < 0)
+		return -2;
+
+	if (val & BIT(bit))
+		return 1;
+
+	return 0;
+}
+
+unsigned int sunxi_pstate_get(uint16_t device)
+{
+	switch (pmic_type) {
+	case PMIC_AXP803:
+		return axp803_pstate_get(device);
+	}
+
+	return ~0;
+}
+
+static int axp803_pstate_set(uint16_t device, uint8_t state)
+{
+	uint32_t regmap = axp803_map_devices(device);
+	uint8_t reg;
+	int bit, val;
+
+	if (regmap == -1)
+		return -1;
+
+	reg = (regmap >> 8) & 0xff;
+	bit = regmap & 0xff;
+
+	val = sunxi_rsb_read(reg);
+	if (val < 0)
+		return -2;
+
+	if (state)
+		val |= BIT(bit);
+	else
+		val &= ~BIT(bit);
+
+	return sunxi_rsb_write(reg, val);
+}
+
+int sunxi_pstate_set(uint16_t device, uint8_t state)
+{
+	switch (pmic_type) {
+	case PMIC_AXP803:
+		return axp803_pstate_set(device, state);
+	}
+
+	return -EINVAL;
+}
+
 int sunxi_power_setup(uint16_t socid)
 {
 	int ret;

@@ -65,11 +65,14 @@
 #define SCP_CMD_SENSORS_CAPS	0x15
 #define SCP_CMD_SENSORS_INFO	0x16
 #define SCP_CMD_SENSORS_VALUE	0x17
+#define SCP_CMD_PSTATE_SET	0x1b
+#define SCP_CMD_PSTATE_GET	0x1c
 
 #define SCP_CMDS_IMPLEMENTED						  \
 	GENMASK(SCP_CMD_DVFS_GET_INDEX, SCP_CMD_DVFS_CAPABILITY)	| \
 	GENMASK(SCP_CMD_CLOCK_GET_RATE, SCP_CMD_CLOCKS_CAPS)		| \
-	GENMASK(SCP_CMD_SENSORS_VALUE, SCP_CMD_SENSORS_CAPS)
+	GENMASK(SCP_CMD_SENSORS_VALUE, SCP_CMD_SENSORS_CAPS)		| \
+	GENMASK(SCP_CMD_PSTATE_SET, SCP_CMD_PSTATE_GET)
 
 /* end of SRAM A1 */
 #define SUNXI_SCPI_SHMEM_BASE   0x17e00
@@ -220,6 +223,14 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 		mmio_write_32(payload_out + 4, 0);
 		*payload_size = 8;
 		return 0;
+	case SCP_CMD_PSTATE_SET:
+		if (sunxi_pstate_set(par1 & 0xffff, (par1 >> 16) & 0xff))
+			return SCPI_E_RANGE;
+		return SCPI_OK;
+	case SCP_CMD_PSTATE_GET:
+		mmio_write_32(payload_out, sunxi_pstate_get(par1 & 0xffff));
+		*payload_size = 0x1;
+		return SCPI_OK;
 	}
 
 	return SCPI_E_SUPPORT;
