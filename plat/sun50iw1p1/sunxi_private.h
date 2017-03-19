@@ -71,7 +71,7 @@ void sunxi_security_setup(void);
 int sunxi_pmic_setup(void);
 int sunxi_pmic_read(uint8_t address);
 int sunxi_pmic_write(uint8_t address, uint8_t value);
-
+int sunxi_power_setup(uint16_t socid);
 int sunxi_power_set_cpu_voltage(int millivolt);
 
 void udelay(unsigned int delay);
@@ -89,6 +89,13 @@ uint32_t sunxi_clock_get_rate(int clocknr);
 int sunxi_clock_set_rate(int clocknr, uint32_t freq);
 
 int sunxi_clock_set_cpu_clock(uint32_t freq_mhz, int enable);
+
+/* Declarations for sunxi_rsb.c */
+int sunxi_rsb_init(void);
+int sunxi_rsb_read(uint8_t address);
+int sunxi_rsb_write(uint8_t address, uint8_t value);
+void sunxi_rsb_wait(const char *desc);
+int sunxi_rsb_configure(uint16_t hw_addr, uint8_t rt_addr);
 
 /* Gets the SPSR for BL33 entry */
 uint32_t sunxi_get_spsr_for_bl33_entry(int aarch);

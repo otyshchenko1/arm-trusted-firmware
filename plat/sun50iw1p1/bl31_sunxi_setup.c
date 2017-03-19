@@ -246,13 +246,7 @@ void bl31_platform_setup(void)
 	/* Detect if this SoC is a multi-cluster one. */
 	plat_setup_topology();
 
-	switch (socid) {
-	case 0x1689:
-		sunxi_pmic_setup();
-		break;
-	case 0x1718:
-		break;
-	}
+	sunxi_power_setup(socid);
 
 	sunxi_setup_clocks(socid);
 
