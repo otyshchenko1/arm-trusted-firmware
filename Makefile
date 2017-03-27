@@ -234,7 +234,7 @@ CFLAGS			+= 	-nostdinc -pedantic -ffreestanding -Wall	\
 CFLAGS			+=	-ffunction-sections -fdata-sections
 LDFLAGS			+=	--fatal-warnings -O1
 LDFLAGS			+=	--gc-sections
-#LDFLAGS		+=	--fix-cortex-a53-843419
+LDFLAGS			+=	--fix-cortex-a53-843419
 
 
 CC			:=	${CROSS_COMPILE}gcc
