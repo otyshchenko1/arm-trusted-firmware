@@ -33,9 +33,10 @@
 #include <ccmu.h>
 #include "sunxi_private.h"
 
-#define PLL_CPUX_1008MHZ    0x1410
-#define PLL_CPUX_816MHZ     0x1010
-#define PLL_CPUX_408MHZ     0x1000
+#define INITIAL_CPU_FREQ	816
+
+#define MHz(f) ((f) * 1000000)
+#define inMHz(mhzf) ((mhzf) / 1000000)
 
 static void mmio_clrsetbits32(uintptr_t addr, uint32_t mask, uint32_t bits)
 {
@@ -64,6 +65,27 @@ static int pll_wait_until_stable(uintptr_t addr)
 	return 0;
 }
 
+int sunxi_clock_set_cpu_clock(uint32_t freq_mhz, int enable)
+{
+	int n, k = 1, m = 1, factor;
+	uint32_t reg;
+
+	factor = freq_mhz / 24;
+	if (factor < 10 || factor > 88)
+		return -1;
+
+	for (n = factor; n > 33 && k < 5; ++k, n = factor / k)
+		;
+
+	reg = (m - 1) | ((k - 1) << 4) | ((n - 1) << 8);
+	if (enable)
+		reg |= PLL_ENABLE_BIT;
+
+	mmio_write_32(CCMU_PLL_CPUX_CTRL_REG, reg);
+
+	return 24 * n * k / m;
+}
+
 int sunxi_setup_clocks(uint16_t socid)
 {
 	uint32_t reg;
@@ -80,8 +102,8 @@ int sunxi_setup_clocks(uint16_t socid)
 					       AXI_CLKDIV(3) ));
 	udelay(20);
 
-	/* Set to 816MHz, but don't enable yet. */
-	mmio_write_32(CCMU_PLL_CPUX_CTRL_REG, PLL_CPUX_816MHZ);
+	/* Setup the clock parameters, but don't enable yet. */
+	sunxi_clock_set_cpu_clock(INITIAL_CPU_FREQ, 0);
 
 	/* Enable PLL_CPUX again */
 	mmio_setbits32(CCMU_PLL_CPUX_CTRL_REG, PLL_ENABLE_BIT);
@@ -116,7 +138,36 @@ struct scpi_clock {
 	uint16_t clockid;
 };
 
+static uint32_t set_cpu_clk_rate(uint32_t reg_addr, uint32_t freq)
+{
+	return sunxi_clock_set_cpu_clock(inMHz(freq), 1);
+}
+
+static uint32_t get_cpu_clk_rate(uint32_t reg_addr)
+{
+	uint32_t clkreg = mmio_read_32(reg_addr);
+	int n, k, m, p;
+
+	if (!(clkreg & PLL_ENABLE_BIT))
+		return 0;
+
+	n = ((clkreg >> 8) & 0x1f) + 1;
+	k = ((clkreg >> 4) & 0x03) + 1;
+	m = ((clkreg >> 0) & 0x03) + 1;
+	p = 1 << ((clkreg >> 16) & 0x3);
+
+	return MHz(24) * n * k / (m * p);
+}
+
+#define CPU_CLK_DESC							\
+	{.min_freq = MHz(240), .max_freq= MHz(1536),			\
+	 .getter = get_cpu_clk_rate, .setter = set_cpu_clk_rate,	\
+	 .reg_addr = CCMU_PLL_CPUX_CTRL_REG,				\
+	 .name = "cpu_clk",						\
+	 .clockid = 0 }
+
 struct scpi_clock sunxi_clocks[] = {
+	CPU_CLK_DESC,
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))

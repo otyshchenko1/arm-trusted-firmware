@@ -86,6 +86,8 @@ const char* sunxi_clock_get_name(int clocknr);
 uint32_t sunxi_clock_get_rate(int clocknr);
 int sunxi_clock_set_rate(int clocknr, uint32_t freq);
 
+int sunxi_clock_set_cpu_clock(uint32_t freq_mhz, int enable);
+
 /* Gets the SPSR for BL33 entry */
 uint32_t sunxi_get_spsr_for_bl33_entry(int aarch);
 
