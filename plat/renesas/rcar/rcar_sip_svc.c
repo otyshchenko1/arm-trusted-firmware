@@ -73,8 +73,11 @@ uint64_t rcar_sip_handler(uint32_t smc_fid,
 
 	/* SiP SMC service normal world's call */
 	switch (smc_fid) {
-	case RCAR_SIP_MBOX_TRIGGER:
-		SMC_RET1(handle, ~0);
+	case RCAR_SIP_MBOX_TRIGGER: {
+		uint32_t ret = rcar_trigger_scpi(x1, x2, x3, x4);
+
+		SMC_RET1(handle, ret);
+	}
 	}
 
 	return rcar_plat_sip_handler(smc_fid, x1, x2, x3, x4,
