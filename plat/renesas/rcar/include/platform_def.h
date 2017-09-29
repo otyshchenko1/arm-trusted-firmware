@@ -194,7 +194,7 @@
 #elif IMAGE_BL2
 # define MAX_XLAT_TABLES		3
 #elif IMAGE_BL31
-# define MAX_XLAT_TABLES		4
+# define MAX_XLAT_TABLES		5
 #elif IMAGE_BL32
 #  define MAX_XLAT_TABLES		3
 #endif

@@ -58,6 +58,10 @@ const uint8_t version_of_renesas[VERSION_OF_RENESAS_MAXLEN]
 					DRAM1_NS_SIZE,			\
 					MT_MEMORY | MT_RW | MT_NS)
 
+#define MAP_DRAM1_NS_SCPI	MAP_REGION_FLAT(DRAM1_NS_SCPI_BASE,		\
+					DRAM1_NS_SCPI_SIZE,			\
+					MT_DEVICE | MT_RW | MT_NS)
+
 #ifdef BL32_BASE
 #define MAP_BL32_MEM	MAP_REGION_FLAT(BL32_BASE,			\
 					BL32_LIMIT - BL32_BASE,		\
@@ -122,6 +126,7 @@ const mmap_region_t rcar_mmap[] = {
 #if IMAGE_BL31
 const mmap_region_t rcar_mmap[] = {
 	MAP_SHARED_RAM,
+	MAP_DRAM1_NS_SCPI,
 	MAP_ATFW_CRASH,
 	MAP_ATFW_LOG,
 	MAP_DEVICE_RCAR,
