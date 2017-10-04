@@ -96,7 +96,8 @@ BL31_SOURCES		+=	${RCAR_GIC_SOURCES}				\
 				plat/renesas/rcar/drivers/pwrc/rcar_pwrc.c	\
 				plat/renesas/rcar/drivers/cpld/ulcb_cpld.c	\
 				plat/renesas/rcar/rcar_sip_svc.c	\
-				plat/renesas/rcar/rcar_scpi.c
+				plat/renesas/rcar/rcar_scpi.c		\
+				plat/renesas/rcar/rcar_clocks.c
 
 # compile option setting
 ARM_CCI_PRODUCT_ID	:= 500

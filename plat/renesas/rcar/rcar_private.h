@@ -158,6 +158,14 @@ uint32_t rcar_get_spsr_for_bl33_entry(void);
 /* Declarations for rcar_scpi.c */
 uint32_t rcar_trigger_scpi(uint32_t x1, uint32_t x2, uint32_t x3, uint32_t x4);
 
+/* Declarations for rcar_clocks.c */
+int rcar_clock_nr_clocks(void);
+uint32_t rcar_clock_get_min_rate(int clocknr);
+uint32_t rcar_clock_get_max_rate(int clocknr);
+const char* rcar_clock_get_name(int clocknr);
+uint32_t rcar_clock_get_rate(int clocknr);
+int rcar_clock_set_rate(int clocknr, uint32_t freq);
+
 /* Prototype function for power management	*/
 void rcar_affinst_standby(unsigned int power_state);
 int rcar_affinst_on(unsigned long mpidr, unsigned long sec_entrypoint,
