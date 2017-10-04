@@ -53,15 +53,41 @@
 #define SCPI_E_BUSY	12
 
 #define SCP_CMD_CAPABILITY	0x02
+#define SCP_CMD_CLOCKS_CAPS	0x0d
+#define SCP_CMD_CLOCK_GET_INFO	0x0e
+#define SCP_CMD_CLOCK_SET_RATE	0x0f
+#define SCP_CMD_CLOCK_GET_RATE	0x10
 
 #define SCP_CMDS_IMPLEMENTED						\
-	0
+	GENMASK(SCP_CMD_CLOCK_GET_RATE, SCP_CMD_CLOCKS_CAPS)
 
 #define RCAR_SCPI_SHMEM_BASE	DRAM1_NS_SCPI_BASE
+
+static int write_clock_info(uintptr_t payload, int clocknr)
+{
+	const char *name, *s;
+	int i;
+
+	name = rcar_clock_get_name(clocknr);
+	if (!name)
+		return -SCPI_E_PARAM;
+
+	mmio_write_32(payload + 0x0, (clocknr & 0xffff) | (0x03 << 16));
+	mmio_write_32(payload + 0x4, rcar_clock_get_min_rate(clocknr));
+	mmio_write_32(payload + 0x8, rcar_clock_get_max_rate(clocknr));
+	for (i = 0, s = name; s[i] != 0; i++)
+		mmio_write_8(payload + 12 + i, s[i]);
+	mmio_write_8(payload + 12 + i, 0);
+
+	return 12 + i;
+}
 
 static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 				uintptr_t payload_in, uintptr_t payload_out)
 {
+	uint32_t par1 = mmio_read_32(payload_in);
+	uint32_t ret;
+
 	switch (cmd) {
 	case SCP_CMD_CAPABILITY:
 		mmio_write_32(payload_out + 0x00, (1U << 16) | (2U << 0));
@@ -83,6 +109,37 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 		mmio_write_32(payload_out + 0x18, 0x0);
 		*payload_size = 0x1c;
 		return SCPI_OK;
+	case SCP_CMD_CLOCKS_CAPS:
+		/* number of implemented clocks */
+		mmio_write_32(payload_out, rcar_clock_nr_clocks());
+		*payload_size = 0x4;
+		return SCPI_OK;
+	case SCP_CMD_CLOCK_GET_INFO:
+		ret = write_clock_info(payload_out, par1 & 0xffff);
+		if (ret < 0) {
+			*payload_size = 0;
+			return SCPI_E_PARAM;
+		}
+
+		*payload_size = ret;
+		return SCPI_OK;
+	case SCP_CMD_CLOCK_SET_RATE: {
+		uint32_t freq = mmio_read_32(payload_in + 4);
+
+		ret = rcar_clock_set_rate(par1 & 0xffff, freq);
+		if (ret < 0)
+			return SCPI_E_RANGE;
+		*payload_size = 0;
+		return SCPI_OK;
+	}
+	case SCP_CMD_CLOCK_GET_RATE:
+		ret = rcar_clock_get_rate(par1 & 0xffff);
+		if (ret == ~0)
+			return SCPI_E_RANGE;
+
+		mmio_write_32(payload_out, ret);
+		*payload_size = 4;
+		return 0;
 	}
 
 	return SCPI_E_SUPPORT;
