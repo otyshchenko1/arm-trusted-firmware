@@ -166,6 +166,13 @@ const char* rcar_clock_get_name(int clocknr);
 uint32_t rcar_clock_get_rate(int clocknr);
 int rcar_clock_set_rate(int clocknr, uint32_t freq);
 
+/* Declarations for rcar_dvfs.c */
+uint32_t rcar_dvfs_get_get_opp_voltage(int oppnr);
+uint32_t rcar_dvfs_get_get_opp_frequency(int oppnr);
+int rcar_dvfs_set_index(int index);
+int rcar_dvfs_get_index(void);
+int rcar_dvfs_get_nr_opp(void);
+
 /* Prototype function for power management	*/
 void rcar_affinst_standby(unsigned int power_state);
 int rcar_affinst_on(unsigned long mpidr, unsigned long sec_entrypoint,

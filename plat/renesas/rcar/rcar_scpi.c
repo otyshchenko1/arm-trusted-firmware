@@ -53,12 +53,18 @@
 #define SCPI_E_BUSY	12
 
 #define SCP_CMD_CAPABILITY	0x02
+#define SCP_CMD_DVFS_CAPABILITY	0x08
+#define SCP_CMD_DVFS_GET_INFO	0x09
+#define SCP_CMD_DVFS_SET_INDEX	0x0a
+#define SCP_CMD_DVFS_GET_INDEX	0x0b
+#define SCP_CMD_DVFS_GET_STAT	0x0c
 #define SCP_CMD_CLOCKS_CAPS	0x0d
 #define SCP_CMD_CLOCK_GET_INFO	0x0e
 #define SCP_CMD_CLOCK_SET_RATE	0x0f
 #define SCP_CMD_CLOCK_GET_RATE	0x10
 
 #define SCP_CMDS_IMPLEMENTED						\
+	GENMASK(SCP_CMD_DVFS_GET_INDEX, SCP_CMD_DVFS_CAPABILITY)	|	\
 	GENMASK(SCP_CMD_CLOCK_GET_RATE, SCP_CMD_CLOCKS_CAPS)
 
 #define RCAR_SCPI_SHMEM_BASE	DRAM1_NS_SCPI_BASE
@@ -144,6 +150,35 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 
 		mmio_write_32(payload_out, ret);
 		*payload_size = 4;
+		return SCPI_OK;
+	case SCP_CMD_DVFS_CAPABILITY:
+		/* number of implemented voltage domains: only one */
+		mmio_write_32(payload_out, 1);
+		*payload_size = 0x1;
+		return SCPI_OK;
+	case SCP_CMD_DVFS_GET_INFO: {
+		int i, nr_opp = rcar_dvfs_get_nr_opp();
+
+		mmio_write_32(payload_out, nr_opp << 8);
+		for (i = 0; i < nr_opp; i++) {
+			mmio_write_32(payload_out + 4 + 2 * i * 4,
+					rcar_dvfs_get_get_opp_frequency(i));
+			mmio_write_32(payload_out + 4 + 2 * i * 4 + 4,
+					rcar_dvfs_get_get_opp_voltage(i));
+		}
+		*payload_size = 4 + 2 * nr_opp * 4;
+		return SCPI_OK;
+	}
+	case SCP_CMD_DVFS_SET_INDEX:
+		if ((par1 & 0xff) != 0)
+			return SCPI_E_PARAM;
+
+		if (rcar_dvfs_set_index((par1 >> 8) & 0xff))
+			return SCPI_E_RANGE;
+		return SCPI_OK;
+	case SCP_CMD_DVFS_GET_INDEX:
+		mmio_write_32(payload_out, rcar_dvfs_get_index());
+		*payload_size = 0x1;
 		return SCPI_OK;
 	}
 
