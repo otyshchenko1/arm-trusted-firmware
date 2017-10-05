@@ -49,6 +49,7 @@ struct op_points
 
 int current_opp_index = 2;
 int current_opp_limit = NR_OPP;
+int current_opp_latency = 300; /* uS */
 
 uint32_t rcar_dvfs_get_get_opp_voltage(int oppnr)
 {
@@ -92,4 +93,9 @@ int rcar_dvfs_get_index(void)
 int rcar_dvfs_get_nr_opp(void)
 {
 	return NR_OPP;
+}
+
+int rcar_dvfs_get_latency(void)
+{
+	return current_opp_latency;
 }
