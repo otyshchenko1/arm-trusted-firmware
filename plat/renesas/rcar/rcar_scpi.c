@@ -159,7 +159,7 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 	case SCP_CMD_DVFS_GET_INFO: {
 		int i, nr_opp = rcar_dvfs_get_nr_opp();
 
-		mmio_write_32(payload_out, nr_opp << 8);
+		mmio_write_32(payload_out, (rcar_dvfs_get_latency() << 16) | (nr_opp << 8));
 		for (i = 0; i < nr_opp; i++) {
 			mmio_write_32(payload_out + 4 + 2 * i * 4,
 					rcar_dvfs_get_get_opp_frequency(i));

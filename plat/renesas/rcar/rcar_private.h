@@ -172,6 +172,7 @@ uint32_t rcar_dvfs_get_get_opp_frequency(int oppnr);
 int rcar_dvfs_set_index(int index);
 int rcar_dvfs_get_index(void);
 int rcar_dvfs_get_nr_opp(void);
+int rcar_dvfs_get_latency(void);
 
 /* Prototype function for power management	*/
 void rcar_affinst_standby(unsigned int power_state);
