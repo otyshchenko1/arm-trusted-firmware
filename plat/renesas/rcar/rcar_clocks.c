@@ -44,6 +44,7 @@ struct scpi_clock {
 };
 
 struct scpi_clock rcar_clocks[] = {
+	0
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
