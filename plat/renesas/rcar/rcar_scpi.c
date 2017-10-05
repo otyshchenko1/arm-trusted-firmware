@@ -86,7 +86,7 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 				uintptr_t payload_in, uintptr_t payload_out)
 {
 	uint32_t par1 = mmio_read_32(payload_in);
-	uint32_t ret;
+	int ret;
 
 	/*NOTICE("%s: The command is 0x%x (par1=0x%x)\n", __func__, cmd, par1);*/
 
@@ -128,20 +128,23 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 	case SCP_CMD_CLOCK_SET_RATE: {
 		uint32_t freq = mmio_read_32(payload_in + 4);
 
+		*payload_size = 0;
 		ret = rcar_clock_set_rate(par1 & 0xffff, freq);
 		if (ret < 0)
 			return SCPI_E_RANGE;
-		*payload_size = 0;
+
 		return SCPI_OK;
 	}
 	case SCP_CMD_CLOCK_GET_RATE:
 		ret = rcar_clock_get_rate(par1 & 0xffff);
-		if (ret == ~0)
+		if (ret < 0) {
+			*payload_size = 0;
 			return SCPI_E_RANGE;
+		}
 
 		mmio_write_32(payload_out, ret);
 		*payload_size = 4;
-		return 0;
+		return SCPI_OK;
 	}
 
 	return SCPI_E_SUPPORT;
