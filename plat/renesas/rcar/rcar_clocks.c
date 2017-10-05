@@ -30,6 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <debug.h>
 #include "rcar_def.h"
 #include "rcar_private.h"
 
@@ -43,8 +44,64 @@ struct scpi_clock {
 	uint16_t clockid;
 };
 
+#define MHz(f) ((f) * 1000000)
+#define inMHz(mhzf) ((mhzf) / 1000000)
+
+static uint32_t set_cpu_a57_clk_rate(uint32_t reg_addr, uint32_t freq)
+{
+	return 0;
+}
+
+static uint32_t get_cpu_a57_clk_rate(uint32_t reg_addr)
+{
+	return MHz(1500);
+}
+
+static uint32_t set_cpu_a53_clk_rate(uint32_t reg_addr, uint32_t freq)
+{
+	return 0;
+}
+
+static uint32_t get_cpu_a53_clk_rate(uint32_t reg_addr)
+{
+	return MHz(1200);
+}
+
+static uint32_t set_gpu_clk_rate(uint32_t reg_addr, uint32_t freq)
+{
+	return 0;
+}
+
+static uint32_t get_gpu_clk_rate(uint32_t reg_addr)
+{
+	return MHz(600);
+}
+
+#define CPU_A57_CLK_DESC							\
+	{.min_freq = MHz(500), .max_freq = MHz(1700),			\
+	 .getter = get_cpu_a57_clk_rate, .setter = set_cpu_a57_clk_rate,	\
+	 .reg_addr = 0,				\
+	 .name = "cpu_a57_clk",		\
+	 .clockid = 0 }
+
+#define CPU_A53_CLK_DESC							\
+	{.min_freq = MHz(1200), .max_freq = MHz(1200),			\
+	 .getter = get_cpu_a53_clk_rate, .setter = set_cpu_a53_clk_rate,	\
+	 .reg_addr = 0,				\
+	 .name = "cpu_a53_clk",		\
+	 .clockid = 1 }
+
+#define GPU_CLK_DESC							\
+	{.min_freq = MHz(600), .max_freq = MHz(600),			\
+	 .getter = get_gpu_clk_rate, .setter = set_gpu_clk_rate,	\
+	 .reg_addr = 0,				\
+	 .name = "gpu_clk",		\
+	 .clockid = 2 }
+
 struct scpi_clock rcar_clocks[] = {
-	0
+	CPU_A57_CLK_DESC,
+	CPU_A53_CLK_DESC,
+	GPU_CLK_DESC,
 };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
