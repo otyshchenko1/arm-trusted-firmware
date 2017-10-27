@@ -87,14 +87,18 @@ BL31_SOURCES		+=	${RCAR_GIC_SOURCES}				\
 				plat/common/aarch64/platform_mp_stack.S		\
 				plat/renesas/rcar/bl31_rcar_setup.c		\
 				plat/renesas/rcar/rcar_pm.c			\
-				plat/renesas/rcar/drivers/memdrv/rcar_console.S	\
+				plat/renesas/rcar/drivers/scif/scif.S		\
 				plat/renesas/rcar/drivers/memdrv/rcar_printf.c	\
 				plat/renesas/rcar/rcar_topology.c		\
 				plat/renesas/rcar/aarch64/rcar_helpers.S	\
 				plat/renesas/rcar/aarch64/rcar_common.c		\
 				plat/renesas/rcar/drivers/pwrc/rcar_call_sram.S	\
 				plat/renesas/rcar/drivers/pwrc/rcar_pwrc.c	\
-				plat/renesas/rcar/drivers/cpld/ulcb_cpld.c
+				plat/renesas/rcar/drivers/cpld/ulcb_cpld.c	\
+				plat/renesas/rcar/rcar_sip_svc.c	\
+				plat/renesas/rcar/rcar_scpi.c		\
+				plat/renesas/rcar/rcar_clocks.c		\
+				plat/renesas/rcar/rcar_dvfs.c
 
 # compile option setting
 ARM_CCI_PRODUCT_ID	:= 500
