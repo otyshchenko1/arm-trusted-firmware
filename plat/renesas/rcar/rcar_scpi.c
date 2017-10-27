@@ -157,9 +157,14 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 		*payload_size = 0x1;
 		return SCPI_OK;
 	case SCP_CMD_DVFS_GET_INFO: {
-		int i, nr_opp = rcar_dvfs_get_nr_opp();
+		int i, nr_opp;
 
-		mmio_write_32(payload_out, (rcar_dvfs_get_latency() << 16) | (nr_opp << 8));
+		/* we support only one voltage domains for now */
+		if ((par1 & 0xff) != 0)
+			return SCPI_E_PARAM;
+
+		nr_opp = rcar_dvfs_get_nr_opp();
+		mmio_write_32(payload_out, (rcar_dvfs_get_latency() << 16) | (nr_opp << 8) | 0);
 		for (i = 0; i < nr_opp; i++) {
 			mmio_write_32(payload_out + 4 + 2 * i * 4,
 					rcar_dvfs_get_get_opp_frequency(i));
@@ -170,6 +175,7 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 		return SCPI_OK;
 	}
 	case SCP_CMD_DVFS_SET_INDEX:
+		/* we support only one voltage domains for now */
 		if ((par1 & 0xff) != 0)
 			return SCPI_E_PARAM;
 
@@ -177,6 +183,10 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 			return SCPI_E_RANGE;
 		return SCPI_OK;
 	case SCP_CMD_DVFS_GET_INDEX:
+		/* we support only one voltage domains for now */
+		if ((par1 & 0xff) != 0)
+			return SCPI_E_PARAM;
+
 		mmio_write_32(payload_out, rcar_dvfs_get_index());
 		*payload_size = 0x1;
 		return SCPI_OK;
