@@ -88,6 +88,8 @@ static uint32_t scpi_handle_cmd(int cmd, uint8_t *payload_size,
 	uint32_t par1 = mmio_read_32(payload_in);
 	uint32_t ret;
 
+	/*NOTICE("%s: The command is 0x%x (par1=0x%x)\n", __func__, cmd, par1);*/
+
 	switch (cmd) {
 	case SCP_CMD_CAPABILITY:
 		mmio_write_32(payload_out + 0x00, (1U << 16) | (2U << 0));
@@ -157,6 +159,9 @@ uint32_t rcar_trigger_scpi(uint32_t x1, uint32_t x2, uint32_t x3, uint32_t x4)
 	ret = scpi_handle_cmd(scpi_header & 0xff, &payload_size,
 			RCAR_SCPI_SHMEM_BASE + 0x108,
 			RCAR_SCPI_SHMEM_BASE + 0x8);
+
+	if (ret)
+		NOTICE("%s: Failed to process command (%u)\n", __func__, ret);
 
 	mmio_write_32(RCAR_SCPI_SHMEM_BASE, (scpi_header & 0xffff) |
 			(uint32_t)payload_size << 16);
