@@ -30,54 +30,175 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <debug.h>
+#include <mmio.h>
 #include "rcar_def.h"
 #include "rcar_private.h"
 
+/* TODO These should be taken from avs_driver.c */
+#define EFUSE_AVS0			(0U)
+#define EFUSE_AVS_NUM		(7U)
+static uint32_t efuse_avs = EFUSE_AVS0;
+
 struct op_points
 {
-	uint32_t freq;
-	uint32_t voltage;
-} rcar_op_points[] = {
-	{500,  820}, /* Hz, mV */
-	{1000, 820},
-	{1500, 820},
-	{1600, 900},
-	{1700, 960}
+	unsigned long freq;	/* Hz */
+	unsigned long volt;	/* uV */
 };
 
-#define NR_OPP (sizeof(rcar_op_points) / sizeof(rcar_op_points[0]))
+#define NR_H3_OPP	5
+#define NR_M3_OPP	6
 
-int current_opp_index = 2;
-int current_opp_limit = NR_OPP;
-int current_opp_latency = 300; /* uS */
+#define ARRAY_SIZE(a)	(sizeof(a) / sizeof((a)[0]))
+
+/* Describe OPPs exactly how they are described in the device-tree */
+static const struct op_points rcar_h3_op_points[EFUSE_AVS_NUM][NR_H3_OPP] = {
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 960000, },
+	},
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 960000, },
+	},
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 960000, },
+	},
+	{
+		{ 500000000,  790000, },
+		{ 1000000000, 790000, },
+		{ 1500000000, 790000, },
+		{ 1600000000, 870000, },
+		{ 1700000000, 910000, },
+	},
+	{
+		{ 500000000,  790000, },
+		{ 1000000000, 790000, },
+		{ 1500000000, 790000, },
+		{ 1600000000, 870000, },
+		{ 1700000000, 890000, },
+	},
+	{
+		{ 500000000,  770000, },
+		{ 1000000000, 770000, },
+		{ 1500000000, 770000, },
+		{ 1600000000, 850000, },
+		{ 1700000000, 870000, },
+	},
+	{
+		{ 500000000,  750000, },
+		{ 1000000000, 750000, },
+		{ 1500000000, 750000, },
+		{ 1600000000, 830000, },
+		{ 1700000000, 860000, },
+	},
+};
+
+static const struct op_points rcar_m3_op_points[EFUSE_AVS_NUM][NR_M3_OPP] = {
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 900000, },
+		{ 1800000000, 960000, },
+	},
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 900000, },
+		{ 1800000000, 960000, },
+	},
+	{
+		{ 500000000,  820000, },
+		{ 1000000000, 820000, },
+		{ 1500000000, 820000, },
+		{ 1600000000, 900000, },
+		{ 1700000000, 900000, },
+		{ 1800000000, 960000, },
+	},
+	{
+		{ 500000000,  790000, },
+		{ 1000000000, 790000, },
+		{ 1500000000, 790000, },
+		{ 1600000000, 870000, },
+		{ 1700000000, 870000, },
+		{ 1800000000, 910000, },
+	},
+	{
+		{ 500000000,  790000, },
+		{ 1000000000, 790000, },
+		{ 1500000000, 790000, },
+		{ 1600000000, 870000, },
+		{ 1700000000, 870000, },
+		{ 1800000000, 890000, },
+	},
+	{
+		{ 500000000,  770000, },
+		{ 1000000000, 770000, },
+		{ 1500000000, 770000, },
+		{ 1600000000, 850000, },
+		{ 1700000000, 850000, },
+		{ 1800000000, 870000, },
+	},
+	{
+		{ 500000000,  750000, },
+		{ 1000000000, 750000, },
+		{ 1500000000, 750000, },
+		{ 1600000000, 830000, },
+		{ 1700000000, 830000, },
+		{ 1800000000, 860000, },
+	},
+};
+
+static int current_opp_index;
+static int current_opp_latency;
+static int current_opp_limit = 0;
+static const struct op_points *current_opp_table;
+
+static int dvfs_inited = 0;
 
 uint32_t rcar_dvfs_get_get_opp_voltage(int oppnr)
 {
-	if (oppnr < 0 || oppnr >= NR_OPP)
+	if (oppnr < 0 || oppnr >= current_opp_limit)
 		return ~0;
 
-	return rcar_op_points[oppnr].voltage;
+	/* Protocol requires voltage to be in mV */
+	return current_opp_table[oppnr].volt / 1000;
 }
 
 uint32_t rcar_dvfs_get_get_opp_frequency(int oppnr)
 {
-	if (oppnr < 0 || oppnr >= NR_OPP)
+	if (oppnr < 0 || oppnr >= current_opp_limit)
 		return ~0;
 
-	return rcar_op_points[oppnr].freq * 1000000;
+	/* Protocol requires frequency to be in Hz */
+	return current_opp_table[oppnr].freq;
 }
 
 int rcar_dvfs_set_index(int index)
 {
-	if (index < 0 || index >= NR_OPP)
+	if (index < 0 || index >= current_opp_limit)
 		return -1;
 
 	if (index < current_opp_index) {
-		//rcar_clock_set_cpu_clock(rcar_op_points[index].freq, 1);
-		//rcar_power_set_cpu_voltage(rcar_op_points[index].voltage);
+		//rcar_clock_set_cpu_clock(current_opp_table[oppnr].freq, 1);
+		//rcar_power_set_cpu_voltage(current_opp_table[oppnr].volt);
 	} else {
-		//rcar_power_set_cpu_voltage(rcar_op_points[index].voltage);
-		//rcar_clock_set_cpu_clock(rcar_op_points[index].freq, 1);
+		//rcar_power_set_cpu_voltage(rcurrent_opp_table[oppnr].volt);
+		//rcar_clock_set_cpu_clock(current_opp_table[oppnr].freq, 1);
 	}
 
 	current_opp_index = index;
@@ -92,10 +213,38 @@ int rcar_dvfs_get_index(void)
 
 int rcar_dvfs_get_nr_opp(void)
 {
-	return NR_OPP;
+	return current_opp_limit;
 }
 
 int rcar_dvfs_get_latency(void)
 {
 	return current_opp_latency;
+}
+
+int rcar_dvfs_opp_init(void)
+{
+	uint32_t product;
+
+	if (dvfs_inited)
+		return 0;
+
+	product = mmio_read_32(RCAR_PRR) & RCAR_PRODUCT_MASK;
+
+	if (product == RCAR_PRODUCT_H3) {
+		current_opp_limit = ARRAY_SIZE(rcar_h3_op_points[efuse_avs]);
+		current_opp_table = &rcar_h3_op_points[efuse_avs][0];
+	} else if (product == RCAR_PRODUCT_M3) {
+		current_opp_limit = ARRAY_SIZE(rcar_m3_op_points[efuse_avs]);
+		current_opp_table = &rcar_m3_op_points[efuse_avs][0];
+	} else
+		return -1;
+
+	/* Guess it is 1500000000 Hz for now */
+	current_opp_index = 2;
+	/* Latency is 300 uS for all OPPs */
+	current_opp_latency = 300;
+
+	dvfs_inited = 1;
+
+	return 0;
 }

@@ -167,6 +167,7 @@ uint32_t rcar_clock_get_rate(int clocknr);
 int rcar_clock_set_rate(int clocknr, uint32_t freq);
 
 /* Declarations for rcar_dvfs.c */
+int rcar_dvfs_opp_init(void);
 uint32_t rcar_dvfs_get_get_opp_voltage(int oppnr);
 uint32_t rcar_dvfs_get_get_opp_frequency(int oppnr);
 int rcar_dvfs_set_index(int index);
